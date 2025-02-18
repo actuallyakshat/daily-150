@@ -179,7 +179,7 @@ func Me(c *fiber.Ctx) error {
 	username := c.Locals("username").(string)
 	user := models.User{}
 
-	if err := db.Where("username = ?", username).First(&user).Error; err != nil {
+	if err := db.Where("username = ?", username).Preload("JournalEntries").First(&user).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Something went wrong",
 		})
@@ -191,5 +191,4 @@ func Me(c *fiber.Ctx) error {
 		"message": "Success",
 		"user":    user,
 	})
-
 }

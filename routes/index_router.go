@@ -6,4 +6,5 @@ import (
 
 func IndexRouter(api fiber.Router) {
 	AuthRouter(api)
+	JournalRouter(api)
 }

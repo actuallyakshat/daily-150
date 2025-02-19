@@ -139,7 +139,7 @@ export default function Login() {
             autoCorrect="off"
             className="absolute opacity-0 left-0"
             onKeyDown={handleKeyDown}
-            inputMode="none"
+            // inputMode="none"
             onChange={(e) =>
               setState((prev) => ({ ...prev, input: e.target.value }))
             }

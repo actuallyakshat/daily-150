@@ -3,6 +3,7 @@ package main
 import (
 	"daily-150/initialisers"
 	"daily-150/middlewares"
+	"daily-150/migrate"
 	"daily-150/routes"
 	"os"
 	"time"
@@ -16,6 +17,7 @@ import (
 func init() {
 	initialisers.LoadEnv()
 	initialisers.ConnectDB()
+	migrate.RunMigrations()
 }
 
 func main() {

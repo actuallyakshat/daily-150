@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router";
 import api from "../lib/axios";
 import { useAuth } from "../store/auth";
 import { JournalEntry } from "../types/types";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface TopBarProps {
   selectedEntry: JournalEntry | null;
@@ -22,13 +22,17 @@ export default function TopBar({
   setSelectedEntry,
 }: TopBarProps) {
   const { user, logout, refreshUser } = useAuth();
+  const [isLoading, setIsLoading] = useState({
+    save: false,
+    delete: false,
+  });
 
   const navigate = useNavigate();
 
   const onSave = useCallback(async () => {
     try {
       if (!selectedEntry) return;
-
+      setIsLoading((prevState) => ({ ...prevState, save: true }));
       if (selectedEntry.ID === 0) {
         const response = await api.post("/api/entry", {
           content,
@@ -46,11 +50,14 @@ export default function TopBar({
       setSelectedEntry(response.data.entry);
     } catch (error) {
       console.error(error);
+    } finally {
+      setIsLoading((prevState) => ({ ...prevState, save: false }));
     }
   }, [content, selectedEntry, setSelectedEntry, refreshUser]);
 
   const deleteEntry = useCallback(async () => {
     try {
+      setIsLoading((prevState) => ({ ...prevState, delete: true }));
       if (!selectedEntry) return;
       await api.delete("/api/entry/" + selectedEntry.ID);
       setSelectedEntry(null);
@@ -58,6 +65,8 @@ export default function TopBar({
       navigate("/dashboard");
     } catch (error) {
       console.error(error);
+    } finally {
+      setIsLoading((prevState) => ({ ...prevState, delete: false }));
     }
   }, [selectedEntry, setSelectedEntry, navigate, refreshUser]);
 
@@ -112,7 +121,7 @@ export default function TopBar({
                 onClick={deleteEntry}
                 className="cursor-pointer hover:text-red-500 transition-colors"
               >
-                delete
+                {isLoading.delete ? "deleting..." : "delete"}
               </button>
             )}
           </div>
@@ -126,7 +135,7 @@ export default function TopBar({
               onClick={onSave}
               className="cursor-pointer hover:text-lime-500 transition-colors"
             >
-              save
+              {isLoading.save ? "saving..." : "save"}
             </button>
           )}
 

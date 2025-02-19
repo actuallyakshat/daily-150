@@ -13,18 +13,23 @@ export default function Dashboard({
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
   useEffect(() => {
-    if (user && user?.journal_entries?.length > 0) {
-      const todaysCompleteDate = formatISO(new Date(), {
-        representation: "complete",
-      });
+    if (user) {
+      if (user?.journal_entries?.length > 0) {
+        const todaysCompleteDate = formatISO(new Date(), {
+          representation: "complete",
+        });
 
-      const alreadyExists = user.journal_entries.some(
-        (entry) => entry.date.split("T")[0] === todaysCompleteDate.split("T")[0]
-      );
+        const alreadyExists = user.journal_entries.some(
+          (entry) =>
+            entry.date.split("T")[0] === todaysCompleteDate.split("T")[0]
+        );
 
-      if (alreadyExists) {
-        setAllowNewEntry(false);
-        return;
+        if (alreadyExists) {
+          setAllowNewEntry(false);
+          return;
+        } else {
+          setAllowNewEntry(true);
+        }
       } else {
         setAllowNewEntry(true);
       }
@@ -40,11 +45,13 @@ export default function Dashboard({
     return null;
   }
 
+  if (!user) return null;
+
   return (
     <div className="flex-1 p-5">
       <h2 className="text-sm text-zinc-400">
         you have made{" "}
-        {user?.journal_entries?.length == 1
+        {user?.journal_entries && user?.journal_entries?.length == 1
           ? "1 entry "
           : user?.journal_entries?.length + " entries "}
         yet. each cell here represents a day.

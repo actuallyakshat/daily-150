@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useAuth } from "../../store/auth";
 import { JournalEntry } from "../../types/types";
 import { formatISO } from "date-fns";
@@ -10,7 +10,8 @@ export default function Dashboard({
   setSelectedEntry: React.Dispatch<React.SetStateAction<JournalEntry | null>>;
   setAllowNewEntry: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
   useEffect(() => {
     if (user && user?.journal_entries?.length > 0) {
       const todaysCompleteDate = formatISO(new Date(), {
@@ -33,6 +34,11 @@ export default function Dashboard({
   useEffect(() => {
     setSelectedEntry(null);
   }, [setSelectedEntry]);
+
+  if (!isLoading && !user) {
+    navigate("/login");
+    return null;
+  }
 
   return (
     <div className="flex-1 p-5">

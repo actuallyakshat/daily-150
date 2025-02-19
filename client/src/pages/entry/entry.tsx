@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import useFetch from "../../hooks/use-fetch";
 import { JournalEntry } from "../../types/types";
 import { formatISO } from "date-fns";
+import { useAuth } from "../../store/auth";
 interface EntryResponse {
   entry: JournalEntry;
 }
@@ -25,6 +26,9 @@ export default function Entry({
     id ? "/api/entry/" + id : null
   );
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (data) {
@@ -60,6 +64,12 @@ export default function Entry({
     }
   }, [content, setAllowSave, selectedEntry]);
 
+  if (!isLoading && !user) {
+    setSelectedEntry(null);
+    navigate("/login");
+    return null;
+  }
+
   if (loading)
     return (
       <div className="flex-1 p-5 animate-pulse space-y-2">
@@ -78,7 +88,14 @@ export default function Entry({
       </div>
     );
 
-  if (error) return <div>Error: {error}</div>;
+  if (error)
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3">
+        <p className="font-medium text-zinc-400">Error: Could not load entry</p>
+        <p className="text-sm">{error}</p>
+      </div>
+    );
+
   return (
     <div
       className="flex-1 flex flex-col p-5"

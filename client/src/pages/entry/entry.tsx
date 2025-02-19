@@ -1,9 +1,13 @@
-import { useEffect, useRef } from "react";
+"use client";
+
+import type React from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router";
 import useFetch from "../../hooks/use-fetch";
-import { JournalEntry } from "../../types/types";
+import type { JournalEntry } from "../../types/types";
 import { formatISO } from "date-fns";
 import { useAuth } from "../../store/auth";
+
 interface EntryResponse {
   entry: JournalEntry;
 }
@@ -26,9 +30,16 @@ export default function Entry({
     id ? "/api/entry/" + id : null
   );
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
+
+  const scrollToBottom = useCallback(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, []);
 
   useEffect(() => {
     if (data) {
@@ -62,13 +73,18 @@ export default function Entry({
     } else {
       setAllowSave(false);
     }
-  }, [content, setAllowSave, selectedEntry]);
+    scrollToBottom();
+  }, [content, setAllowSave, selectedEntry, scrollToBottom]);
 
   if (!isLoading && !user) {
     setSelectedEntry(null);
     navigate("/login");
     return null;
   }
+
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContent(e.target.value);
+  };
 
   if (loading)
     return (
@@ -98,7 +114,8 @@ export default function Entry({
 
   return (
     <div
-      className="flex-1 flex flex-col p-5"
+      ref={containerRef}
+      className="flex-1 flex flex-col p-5 overflow-y-auto noscrollbar"
       onClick={() => inputRef.current?.focus()}
     >
       <textarea
@@ -112,7 +129,7 @@ export default function Entry({
           wordWrap: "break-word",
           whiteSpace: "pre-wrap",
         }}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={handleContentChange}
       />
       <pre className="whitespace-pre-wrap">
         {content}

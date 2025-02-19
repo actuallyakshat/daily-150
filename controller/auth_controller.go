@@ -185,6 +185,10 @@ func Me(c *fiber.Ctx) error {
 		})
 	}
 
+	for i := range user.JournalEntries {
+		user.JournalEntries[i].EncryptedContent = ""
+	}
+
 	user.Password = ""
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../../lib/axios";
 import axios from "axios";
+import { useNavigate } from "react-router";
 
 export default function Register() {
   const [state, setState] = useState({
@@ -20,24 +21,22 @@ export default function Register() {
   });
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     inputRef.current?.focus();
   }, [state.messages, state.stage]);
 
   const handleRegister = async (username: string, password: string) => {
-    console.log("USERNAME IS", username);
-    console.log("PASSWORD IS", password);
-
     try {
-      const response = await api.post("/api/register", { username, password });
-
-      console.log(response.status);
+      await api.post("/api/register", { username, password });
 
       setState((prev) => ({
         ...prev,
         messages: [...prev.messages, "Registration successful!"],
       }));
+
+      navigate("/login");
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 400) {
@@ -159,10 +158,10 @@ export default function Register() {
         <div>
           <span className="mr-2 flex-shrink-0">$</span>
           <input
-            autoComplete="off"
+            autoComplete="new-password"
             spellCheck={false}
             ref={inputRef}
-            type={state.stage === "username" ? "text" : "password"}
+            type="text"
             disabled={state.stage === "finished"}
             value={state.input}
             autoCorrect="off"
@@ -176,7 +175,9 @@ export default function Register() {
 
           {/* Visible Text + Cursor */}
           <span className="whitespace-pre">
-            {state.input}
+            {state.stage === "password" || state.stage === "confirmPassword"
+              ? "*".repeat(state.input.length)
+              : state.input}
             <span className="text-white animate-blink">█</span>
           </span>
         </div>

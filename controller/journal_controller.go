@@ -29,20 +29,17 @@ func CreateEntry(c *fiber.Ctx) error {
 		})
 	}
 
-	// Validate required fields
 	if body.Content == "" || body.Date == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Both date and content are required",
 		})
 	}
 
-	// Get user
 	var user models.User
 	if err := db.Where("username = ?", username).First(&user).Error; err != nil {
 		return helper.HandleError(c, err)
 	}
 
-	// Parse date
 	parsedDate, err := time.Parse(time.RFC3339, body.Date)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -51,7 +48,6 @@ func CreateEntry(c *fiber.Ctx) error {
 		})
 	}
 
-	// Encrypt content
 	encryptedContent, err := models.Encrypt(body.Content)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -59,7 +55,13 @@ func CreateEntry(c *fiber.Ctx) error {
 		})
 	}
 
-	// Create new entry
+	var existingEntry models.JournalEntry
+	if err := db.Where("user_id = ? AND date = ?", user.ID, parsedDate).First(&existingEntry).Error; err == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Entry for this date already exists",
+		})
+	}
+
 	newEntry := models.JournalEntry{
 		UserID:           user.ID,
 		Date:             parsedDate,
@@ -72,9 +74,8 @@ func CreateEntry(c *fiber.Ctx) error {
 		})
 	}
 
-	// Create response with decrypted content
 	type EntryResponse struct {
-		ID        uint   `json:"id"`
+		ID        uint   `json:"ID"`
 		UserID    uint   `json:"user_id"`
 		Date      string `json:"date"`
 		Content   string `json:"content"`
@@ -85,7 +86,7 @@ func CreateEntry(c *fiber.Ctx) error {
 		ID:        newEntry.ID,
 		UserID:    newEntry.UserID,
 		Date:      newEntry.Date.Format("2006-01-02"),
-		Content:   body.Content, // Use original content instead of decrypting
+		Content:   body.Content,
 		CreatedAt: newEntry.CreatedAt.Format("2006-01-02 15:04:05"),
 	}
 
@@ -178,7 +179,7 @@ func UpdateEntry(c *fiber.Ctx) error {
 		})
 	}
 
-	// Encrypt the new content before saving
+	plainContent := updateEntryRequest.Content
 	encryptedContent, err := models.Encrypt(updateEntryRequest.Content)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -194,14 +195,17 @@ func UpdateEntry(c *fiber.Ctx) error {
 		})
 	}
 
+	entry.EncryptedContent = plainContent
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": "Entry updated successfully",
+		"entry":   entry,
 	})
 }
 
-func GetEntryByDate(c *fiber.Ctx) error {
+func GetEntryByID(c *fiber.Ctx) error {
 	db := initialisers.DB
-	date := c.Params("date")
+	id := c.Params("id")
 	username, ok := helper.GetUsername(c)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -215,13 +219,10 @@ func GetEntryByDate(c *fiber.Ctx) error {
 	}
 
 	var entry models.JournalEntry
-	if err := db.Where("date = ? AND user_id = ?", date, user.ID).First(&entry).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Error retrieving entry",
-		})
+	if err := db.Where("id = ? AND user_id = ?", id, user.ID).First(&entry).Error; err != nil {
+		return helper.HandleError(c, err)
 	}
 
-	// Decrypt the content before sending
 	decryptedContent, err := models.Decrypt(entry.EncryptedContent)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -229,9 +230,8 @@ func GetEntryByDate(c *fiber.Ctx) error {
 		})
 	}
 
-	// Create a response struct that includes decrypted content
 	type EntryResponse struct {
-		ID        uint   `json:"id"`
+		ID        uint   `json:"ID"`
 		UserID    uint   `json:"user_id"`
 		Date      string `json:"date"`
 		Content   string `json:"content"`
@@ -273,9 +273,8 @@ func GetAllEntries(c *fiber.Ctx) error {
 		})
 	}
 
-	// Create a slice to hold decrypted entries
 	type EntryResponse struct {
-		ID        uint   `json:"id"`
+		ID        uint   `json:"ID"`
 		UserID    uint   `json:"user_id"`
 		Date      string `json:"date"`
 		Content   string `json:"content"`
@@ -285,11 +284,10 @@ func GetAllEntries(c *fiber.Ctx) error {
 
 	decryptedEntries := make([]EntryResponse, 0, len(entries))
 
-	// Decrypt each entry's content
 	for _, entry := range entries {
 		decryptedContent, err := models.Decrypt(entry.EncryptedContent)
 		if err != nil {
-			continue // Skip entries that fail to decrypt
+			continue
 		}
 
 		decryptedEntry := EntryResponse{

@@ -1,13 +1,13 @@
 interface User {
   ID: number;
   username: string;
-  JournalEntries: JournalEntry[];
+  journal_entries: JournalEntry[];
 }
 
 interface JournalEntry {
   ID: number;
-  userID: number;
-  date: Date;
+  user_id: number;
+  date: string;
   content: string;
 }
 

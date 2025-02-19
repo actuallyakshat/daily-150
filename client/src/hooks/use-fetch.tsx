@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../lib/axios";
 
-const useFetch = <T,>(url: string, options?: object) => {
+const useFetch = <T,>(url: string | null, options?: object) => {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -11,6 +11,7 @@ const useFetch = <T,>(url: string, options?: object) => {
 
     const fetchData = async () => {
       try {
+        if (!url) return;
         setLoading(true);
         const response = await api.get<T>(url, options);
         if (isMounted) setData(response.data);
@@ -28,6 +29,8 @@ const useFetch = <T,>(url: string, options?: object) => {
       isMounted = false;
     };
   }, [url, options]); // Remove options from dependency array
+
+  if (!url) return { data, error, loading };
 
   return { data, error, loading };
 };

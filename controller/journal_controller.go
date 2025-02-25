@@ -6,6 +6,7 @@ import (
 	"daily-150/initialisers"
 	"daily-150/models"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -323,6 +324,8 @@ func GenerateWeeklySummary(c *fiber.Ctx) error {
 	RECEIVED_CRON_ACTIVATION_KEY := c.Get("x-api-key")
 	if RECEIVED_CRON_ACTIVATION_KEY != CRON_ACTIVATION_KEY {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			fmt.Println("RECEIVED_CRON_ACTIVATION_KEY: ", RECEIVED_CRON_ACTIVATION_KEY)
+			fmt.Println("CRON_ACTIVATION_KEY: ", CRON_ACTIVATION_KEY)
 			"error": "Unauthorized",
 		})
 	}

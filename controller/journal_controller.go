@@ -320,7 +320,6 @@ func GenerateWeeklySummary(c *fiber.Ctx) error {
 
 	CRON_ACTIVATION_KEY := os.Getenv("CRON_ACTIVATION_KEY")
 
-	//get x-api-key from header
 	RECEIVED_CRON_ACTIVATION_KEY := c.Get("x-api-key")
 	if RECEIVED_CRON_ACTIVATION_KEY != CRON_ACTIVATION_KEY {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -370,7 +369,7 @@ func GenerateWeeklySummary(c *fiber.Ctx) error {
 	resp, err := client.Do(req)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Error sending data to Express server",
+			"error": "Error sending data to Express server" + err.Error(),
 		})
 	}
 	defer resp.Body.Close()

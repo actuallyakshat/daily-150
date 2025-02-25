@@ -29,12 +29,11 @@ type JournalEntry struct {
 	Date             time.Time `gorm:"not null" json:"date"`
 	EncryptedContent string    `gorm:"not null" json:"content"`
 }
-
 type Summary struct {
 	gorm.Model
-	UserID     uint   `gorm:"not null" json:"user_id"`
-	WeekNumber uint   `gorm:"not null" json:"week_number"`
-	Year       uint   `gorm:"not null" json:"year"`
+	UserID     uint   `gorm:"not null;uniqueIndex:unique_user_week_year" json:"user_id"`
+	WeekNumber uint   `gorm:"not null;uniqueIndex:unique_user_week_year" json:"week_number"`
+	Year       uint   `gorm:"not null;uniqueIndex:unique_user_week_year" json:"year"`
 	Summary    string `gorm:"not null" json:"summary"`
 }
 

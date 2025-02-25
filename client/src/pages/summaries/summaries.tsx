@@ -15,7 +15,7 @@ export default function Summaries() {
     <div className="flex-1 p-5">
       <h1 className="font-medium text-xl">Weekly Summaries</h1>
       <p className="text-zinc-400 text-sm">
-        A list of weekly summaries for {user?.username}
+        A list of weekly summaries for {user?.username}. Updated every monday.
       </p>
       <div className="mt-4">
         {user?.summaries.map((summary) => (
@@ -27,6 +27,12 @@ export default function Summaries() {
             {summary.week_number}
           </Link>
         ))}
+        {user?.summaries.length === 0 && (
+          <p className="text-zinc-400 text-sm mt-4">
+            No weekly summary generated yet. Keep journaling and we will
+            generate one by this monday.
+          </p>
+        )}
       </div>
     </div>
   );

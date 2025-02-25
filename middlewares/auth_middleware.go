@@ -13,7 +13,6 @@ import (
 var ignoredRoutes = []string{"/api/register", "/api/login", "/api/generate-summary"}
 
 func isIgnoredRoute(c *fiber.Ctx) bool {
-	fmt.Println(c.Path())
 	for _, route := range ignoredRoutes {
 		if c.Path() == route {
 			return true

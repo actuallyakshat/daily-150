@@ -17,7 +17,7 @@ export default function Summaries() {
       <p className="text-zinc-400 text-sm">
         A list of weekly summaries for {user?.username}. Updated every monday.
       </p>
-      <div className="mt-4">
+      <div className="mt-4 flex gap-1.5">
         {user?.summaries.map((summary) => (
           <Link
             key={summary.ID}

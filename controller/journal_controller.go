@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm/clause"
 )
 
 func CreateEntry(c *fiber.Ctx) error {
@@ -400,7 +401,10 @@ func GenerateWeeklySummary(c *fiber.Ctx) error {
 			Year:       uint(year),
 			Summary:    encryptedSummary,
 		}
-		if err := db.Create(&newSummary).Error; err != nil {
+		if err := db.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "user_id"}, {Name: "week_number"}, {Name: "year"}}, // Conflict target (unique constraint)
+			DoUpdates: clause.AssignmentColumns([]string{"summary"}),                             // Update the "summary" column on conflict
+		}).Create(&newSummary).Error; err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Error saving summary",
 			})

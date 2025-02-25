@@ -20,6 +20,7 @@ type User struct {
 	Username       string         `gorm:"uniqueIndex;not null;size:255" json:"username"`
 	Password       string         `gorm:"not null;size:255" json:"-"`
 	JournalEntries []JournalEntry `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;" json:"journal_entries"`
+	Summaries      []Summary      `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;" json:"summaries"`
 }
 
 type JournalEntry struct {
@@ -27,6 +28,14 @@ type JournalEntry struct {
 	UserID           uint      `gorm:"not null" json:"user_id"`
 	Date             time.Time `gorm:"not null" json:"date"`
 	EncryptedContent string    `gorm:"not null" json:"content"`
+}
+
+type Summary struct {
+	gorm.Model
+	UserID     uint   `gorm:"not null" json:"user_id"`
+	WeekNumber uint   `gorm:"not null" json:"week_number"`
+	Year       uint   `gorm:"not null" json:"year"`
+	Summary    string `gorm:"not null" json:"summary"`
 }
 
 func getEncryptionKey() ([]byte, error) {
@@ -54,8 +63,6 @@ func getEncryptionKey() ([]byte, error) {
 }
 
 func Encrypt(text string) (string, error) {
-	log.Printf("INFO: Encrypting text: %s\n", text)
-
 	key, err := getEncryptionKey()
 	if err != nil {
 		return "", err
@@ -83,13 +90,11 @@ func Encrypt(text string) (string, error) {
 
 	ciphertext := gcm.Seal(nonce, nonce, plaintext, nil)
 	encodedCiphertext := base64.StdEncoding.EncodeToString(ciphertext)
-	log.Printf("INFO: Encryption successful, ciphertext: %s\n", encodedCiphertext)
 
 	return encodedCiphertext, nil
 }
 
 func Decrypt(encryptedText string) (string, error) {
-	log.Printf("INFO: Decrypting text: %s\n", encryptedText)
 
 	key, err := getEncryptionKey()
 	if err != nil {
@@ -127,7 +132,6 @@ func Decrypt(encryptedText string) (string, error) {
 	}
 
 	decryptedText := string(plaintext)
-	log.Printf("INFO: Decryption successful, plaintext: %s\n", decryptedText)
 
 	return decryptedText, nil
 }

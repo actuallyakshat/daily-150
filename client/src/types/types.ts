@@ -2,6 +2,7 @@ interface User {
   ID: number;
   username: string;
   journal_entries: JournalEntry[];
+  summaries: Summary[];
 }
 
 interface JournalEntry {
@@ -11,4 +12,11 @@ interface JournalEntry {
   content: string;
 }
 
-export type { User, JournalEntry };
+interface Summary {
+  ID: number;
+  user_id: number;
+  week_number: number;
+  summary: string;
+}
+
+export type { User, JournalEntry, Summary };

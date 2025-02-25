@@ -1,9 +1,13 @@
 package controllers
 
 import (
+	"bytes"
 	"daily-150/helper"
 	"daily-150/initialisers"
 	"daily-150/models"
+	"encoding/json"
+	"net/http"
+	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -95,6 +99,7 @@ func CreateEntry(c *fiber.Ctx) error {
 		"entry":   response,
 	})
 }
+
 func DeleteEntry(c *fiber.Ctx) error {
 
 	db := initialisers.DB
@@ -304,5 +309,179 @@ func GetAllEntries(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": "Entries fetched successfully",
 		"entries": decryptedEntries,
+	})
+}
+
+func GenerateWeeklySummary(c *fiber.Ctx) error {
+	db := initialisers.DB
+	now := time.Now()
+	startOfWeek := now.AddDate(0, 0, -int(now.Weekday()))
+	endOfWeek := startOfWeek.AddDate(0, 0, 7)
+
+	CRON_ACTIVATION_KEY := os.Getenv("CRON_ACTIVATION_KEY")
+
+	//get x-api-key from header
+	RECEIVED_CRON_ACTIVATION_KEY := c.Get("x-api-key")
+	if RECEIVED_CRON_ACTIVATION_KEY != CRON_ACTIVATION_KEY {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	var entries []models.JournalEntry
+	if err := db.Where("date BETWEEN ? AND ?", startOfWeek, endOfWeek).Find(&entries).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Error retrieving entries",
+		})
+	}
+
+	userEntries := make(map[uint][]string)
+	for _, entry := range entries {
+		decryptedContent, err := models.Decrypt(entry.EncryptedContent)
+
+		if err != nil {
+			continue
+		}
+
+		userEntries[entry.UserID] = append(userEntries[entry.UserID], decryptedContent)
+	}
+
+	expressServerURL := os.Getenv("SUMMARY_SERVICE_URL")
+	payload, err := json.Marshal(userEntries)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Error marshalling payload",
+		})
+	}
+
+	SUMMARISER_KEY := os.Getenv("SUMMARISER_KEY")
+
+	req, err := http.NewRequest("POST", expressServerURL, bytes.NewBuffer(payload))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Error creating request",
+		})
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", SUMMARISER_KEY)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Error sending data to Express server",
+		})
+	}
+	defer resp.Body.Close()
+
+	var result map[uint]string
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Error decoding response from Express server",
+		})
+	}
+
+	now = time.Now()
+	year, week := now.ISOWeek()
+
+	for userID, summary := range result {
+		encryptedSummary, err := models.Encrypt(summary)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Error encrypting summary",
+			})
+		}
+		newSummary := models.Summary{
+			UserID:     userID,
+			WeekNumber: uint(week),
+			Year:       uint(year),
+			Summary:    encryptedSummary,
+		}
+		if err := db.Create(&newSummary).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Error saving summary",
+			})
+		}
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "Summaries generated and saved successfully",
+	})
+}
+
+func GetSummariesForUser(c *fiber.Ctx) error {
+	db := initialisers.DB
+	username, ok := helper.GetUsername(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "You are not authorized to view this entry",
+		})
+	}
+
+	var user models.User
+	if err := db.Where("username = ?", username).First(&user).Error; err != nil {
+		return helper.HandleError(c, err)
+	}
+
+	var summaries []models.Summary
+	if err := db.Where("user_id = ?", user.ID).Find(&summaries).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Error retrieving summaries",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"summaries": summaries,
+	})
+}
+
+func GetSummaryByID(c *fiber.Ctx) error {
+	db := initialisers.DB
+	id := c.Params("id")
+	username, ok := helper.GetUsername(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "You are not authorized to view this entry",
+		})
+	}
+
+	var user models.User
+	if err := db.Where("username = ?", username).First(&user).Error; err != nil {
+		return helper.HandleError(c, err)
+	}
+
+	var summary models.Summary
+	if err := db.Where("id = ? AND user_id = ?", id, user.ID).First(&summary).Error; err != nil {
+		return helper.HandleError(c, err)
+	}
+
+	decryptedSummary, err := models.Decrypt(summary.Summary)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Error decrypting summary",
+		})
+	}
+
+	type SummaryResponse struct {
+		ID         uint   `json:"ID"`
+		UserID     uint   `json:"user_id"`
+		WeekNumber uint   `json:"week_number"`
+		Summary    string `json:"summary"`
+		CreatedAt  string `json:"created_at"`
+		UpdatedAt  string `json:"updated_at"`
+	}
+
+	response := SummaryResponse{
+		ID:         summary.ID,
+		UserID:     summary.UserID,
+		WeekNumber: summary.WeekNumber,
+		Summary:    decryptedSummary,
+		CreatedAt:  summary.CreatedAt.Format("2006-01-02 15:04:05"),
+		UpdatedAt:  summary.UpdatedAt.Format("2006-01-02 15:04:05"),
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"summary": response,
 	})
 }

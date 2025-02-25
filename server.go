@@ -22,6 +22,7 @@ func init() {
 
 func main() {
 	app := fiber.New()
+	setupMiddlewares(app)
 	setupRoutes(app)
 	setupStaticFiles(app)
 	startServer(app)

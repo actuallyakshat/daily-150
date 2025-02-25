@@ -6,5 +6,5 @@ import (
 )
 
 func RunMigrations() {
-	initialisers.DB.AutoMigrate(&models.User{}, &models.JournalEntry{})
+	initialisers.DB.AutoMigrate(&models.User{}, &models.JournalEntry{}, &models.Summary{})
 }

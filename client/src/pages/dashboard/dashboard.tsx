@@ -50,7 +50,7 @@ export default function Dashboard({
   return (
     <div className="flex-1 p-5">
       <h2 className="text-sm text-zinc-400">
-        you have made{" "}
+        You have made{" "}
         {user?.journal_entries && user?.journal_entries?.length == 1
           ? "1 entry "
           : user?.journal_entries?.length + " entries "}

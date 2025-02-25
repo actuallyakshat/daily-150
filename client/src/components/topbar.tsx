@@ -149,6 +149,13 @@ export default function TopBar({
           )}
 
           <Link
+            to="/summaries"
+            className="cursor-pointer hover:text-lime-500 transition-colors"
+          >
+            summaries
+          </Link>
+
+          <Link
             className="hover:text-lime-500 transition-colors"
             to="/dashboard"
           >

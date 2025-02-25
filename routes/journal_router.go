@@ -12,4 +12,7 @@ func JournalRouter(api fiber.Router) {
 	api.Get("/entry/:id", controllers.GetEntryByID)
 	api.Patch("/entry/:id", controllers.UpdateEntry)
 	api.Delete("/entry/:id", controllers.DeleteEntry)
+	api.Get("/entries/this-week", controllers.GenerateWeeklySummary)
+	api.Get("/summaries", controllers.GetSummariesForUser)
+	api.Get("/summary/:id", controllers.GetSummaryByID)
 }

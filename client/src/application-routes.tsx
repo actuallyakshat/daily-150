@@ -10,6 +10,8 @@ import Entry from "./pages/entry/entry";
 import Landing from "./pages/landing/landing";
 import { AuthProvider } from "./providers/auth-provider";
 import { JournalEntry } from "./types/types";
+import Summaries from "./pages/summaries/summaries";
+import Summary from "./pages/summaries/summary";
 
 export default function ApplicationRoutes() {
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
@@ -75,6 +77,8 @@ export default function ApplicationRoutes() {
                 />
               }
             />
+            <Route path="/summaries" element={<Summaries />} />
+            <Route path="/summary/:id" element={<Summary />} />
 
             <Route path="/*" element={<NotFound />} />
           </Routes>

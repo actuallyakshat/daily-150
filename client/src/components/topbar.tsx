@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import api from "../lib/axios";
 import { useAuth } from "../store/auth";
 import { JournalEntry } from "../types/types";
@@ -28,6 +28,7 @@ export default function TopBar({
   });
 
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   const onSave = useCallback(async () => {
     try {
@@ -94,6 +95,12 @@ export default function TopBar({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [allowSave, onSave]);
+
+  useEffect(() => {
+    if (pathname != "/entry") {
+      setSelectedEntry(null);
+    }
+  }, [pathname, setSelectedEntry]);
 
   return (
     <div className="min-h-8 sm:min-h-12 px-2 sm:px-5 bg-zinc-900 flex items-center justify-between text-xs sm:text-sm">

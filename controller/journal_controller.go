@@ -316,8 +316,10 @@ func GetAllEntries(c *fiber.Ctx) error {
 
 func GenerateWeeklySummary(c *fiber.Ctx) error {
 	db := initialisers.DB
-	now := time.Now()
-	startOfWeek := now.AddDate(0, 0, -int(now.Weekday()))
+	now := time.Now().UTC()
+
+	// Calculate the start and end of the previous week because cron job will run every monday
+	startOfWeek := now.AddDate(0, 0, -int(now.Weekday())-7)
 	endOfWeek := startOfWeek.AddDate(0, 0, 7)
 
 	CRON_ACTIVATION_KEY := os.Getenv("CRON_ACTIVATION_KEY")
@@ -385,8 +387,8 @@ func GenerateWeeklySummary(c *fiber.Ctx) error {
 		})
 	}
 
-	now = time.Now()
-	year, week := now.ISOWeek()
+	previousWeek := now.AddDate(0, 0, -7)
+	year, week := previousWeek.ISOWeek()
 
 	for userID, summary := range result {
 		encryptedSummary, err := models.Encrypt(summary)

@@ -37,6 +37,12 @@ type Summary struct {
 	Summary    string `gorm:"not null" json:"summary"`
 }
 
+// Only for the code and not an actual relation in the database.
+type SummaryTask struct {
+	UserID  uint     `json:"user_id"`
+	Entries []string `json:"entries"`
+}
+
 func getEncryptionKey() ([]byte, error) {
 	key := os.Getenv("JOURNAL_ENCRYPTION_KEY")
 	if key == "" {

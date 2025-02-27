@@ -5,6 +5,7 @@ import (
 	"daily-150/middlewares"
 	"daily-150/migrate"
 	"daily-150/routes"
+	"daily-150/routines"
 	"os"
 	"time"
 
@@ -17,15 +18,20 @@ import (
 func init() {
 	initialisers.LoadEnv()
 	initialisers.ConnectDB()
+	initialisers.InitRedis()
 	migrate.RunMigrations()
 }
 
 func main() {
+
+	go routines.ProcessSummaries()
+
 	app := fiber.New()
 	setupMiddlewares(app)
 	setupRoutes(app)
 	setupStaticFiles(app)
 	startServer(app)
+
 }
 
 func setupMiddlewares(app *fiber.App) {

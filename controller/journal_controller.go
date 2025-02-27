@@ -1,18 +1,17 @@
 package controllers
 
 import (
-	"bytes"
+	"context"
 	"daily-150/helper"
 	"daily-150/initialisers"
 	"daily-150/models"
 	"encoding/json"
 	"fmt"
-	"net/http"
+	"log"
 	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"gorm.io/gorm/clause"
 )
 
 func CreateEntry(c *fiber.Ctx) error {
@@ -316,6 +315,7 @@ func GetAllEntries(c *fiber.Ctx) error {
 
 func GenerateWeeklySummary(c *fiber.Ctx) error {
 	db := initialisers.DB
+	redisClient := initialisers.RedisClient
 	now := time.Now().UTC()
 
 	// Calculate the start and end of the previous week because cron job will run every monday
@@ -326,8 +326,8 @@ func GenerateWeeklySummary(c *fiber.Ctx) error {
 
 	RECEIVED_CRON_ACTIVATION_KEY := c.Get("x-api-key")
 	if RECEIVED_CRON_ACTIVATION_KEY != CRON_ACTIVATION_KEY {
-		fmt.Println("RECEIVED_CRON_ACTIVATION_KEY: ", RECEIVED_CRON_ACTIVATION_KEY)
-		fmt.Println("CRON_ACTIVATION_KEY: ", CRON_ACTIVATION_KEY)
+		log.Println("RECEIVED_CRON_ACTIVATION_KEY: ", RECEIVED_CRON_ACTIVATION_KEY)
+		log.Println("CRON_ACTIVATION_KEY: ", CRON_ACTIVATION_KEY)
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Unauthorized",
 		})
@@ -340,6 +340,9 @@ func GenerateWeeklySummary(c *fiber.Ctx) error {
 		})
 	}
 
+	log.Println("GOT THESE MANY ENTRIES: ", len(entries))
+	log.Println("DECRYPTING ENTRIES")
+
 	userEntries := make(map[uint][]string)
 	for _, entry := range entries {
 		decryptedContent, err := models.Decrypt(entry.EncryptedContent)
@@ -351,70 +354,105 @@ func GenerateWeeklySummary(c *fiber.Ctx) error {
 		userEntries[entry.UserID] = append(userEntries[entry.UserID], decryptedContent)
 	}
 
-	expressServerURL := os.Getenv("SUMMARY_SERVICE_URL")
-	payload, err := json.Marshal(userEntries)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Error marshalling payload",
-		})
+	ctx := context.Background()
+	queueName := "summary_tasks"
+	taskCount := 0
+
+	for userID, entries := range userEntries {
+		task := models.SummaryTask{
+			UserID:  userID,
+			Entries: entries,
+		}
+
+		taskJSON, err := json.Marshal(task)
+		if err != nil {
+			log.Println("Error marshalling task: ", err)
+			continue
+		}
+
+		log.Println("PUSHING TASK INTO QUEUE ")
+
+		if err := redisClient.RPush(ctx, queueName, taskJSON).Err(); err != nil {
+			log.Println("Error pushing task to Redis queue: ", err)
+			continue
+		}
+		taskCount++
+
 	}
 
-	SUMMARISER_KEY := os.Getenv("SUMMARISER_KEY")
+	// expressServerURL := os.Getenv("SUMMARY_SERVICE_URL")
+	// payload, err := json.Marshal(userEntries)
+	// if err != nil {
+	// 	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+	// 		"error": "Error marshalling payload",
+	// 	})
+	// }
 
-	req, err := http.NewRequest("POST", expressServerURL, bytes.NewBuffer(payload))
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Error creating request",
-		})
-	}
+	// SUMMARISER_KEY := os.Getenv("SUMMARISER_KEY")
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", SUMMARISER_KEY)
+	// req, err := http.NewRequest("POST", expressServerURL, bytes.NewBuffer(payload))
+	// if err != nil {
+	// 	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+	// 		"error": "Error creating request",
+	// 	})
+	// }
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Error sending data to Express server" + err.Error(),
-		})
-	}
-	defer resp.Body.Close()
+	// req.Header.Set("Content-Type", "application/json")
+	// req.Header.Set("x-api-key", SUMMARISER_KEY)
 
-	var result map[uint]string
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Error decoding response from Express server",
-		})
-	}
+	// client := &http.Client{}
+	// resp, err := client.Do(req)
+	// if err != nil {
+	// 	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+	// 		"error": "Error sending data to Express server" + err.Error(),
+	// 	})
+	// }
+	// defer resp.Body.Close()
+
+	// var result map[uint]string
+	// if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	// 	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+	// 		"error": "Error decoding response from Express server",
+	// 	})
+	// }
 
 	previousWeek := now.AddDate(0, 0, -7)
 	year, week := previousWeek.ISOWeek()
+	batchInfoJSON, _ := json.Marshal(map[string]interface{}{
+		"year":      year,
+		"week":      week,
+		"taskCount": taskCount,
+		"timestamp": now.Format(time.RFC3339),
+	})
 
-	for userID, summary := range result {
-		encryptedSummary, err := models.Encrypt(summary)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Error encrypting summary",
-			})
-		}
-		newSummary := models.Summary{
-			UserID:     userID,
-			WeekNumber: uint(week),
-			Year:       uint(year),
-			Summary:    encryptedSummary,
-		}
-		if err := db.Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "user_id"}, {Name: "week_number"}, {Name: "year"}}, // Conflict target (unique constraint)
-			DoUpdates: clause.AssignmentColumns([]string{"summary"}),                             // Update the "summary" column on conflict
-		}).Create(&newSummary).Error; err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Error saving summary",
-			})
-		}
-	}
+	log.Println("SETTING REDIS BATCH INFO")
+	redisClient.Set(ctx, fmt.Sprintf("batch:%d:%d", year, week), batchInfoJSON, 30*24*time.Hour)
+
+	// for userID, summary := range result {
+	// 	encryptedSummary, err := models.Encrypt(summary)
+	// 	if err != nil {
+	// 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+	// 			"error": "Error encrypting summary",
+	// 		})
+	// 	}
+	// 	newSummary := models.Summary{
+	// 		UserID:     userID,
+	// 		WeekNumber: uint(week),
+	// 		Year:       uint(year),
+	// 		Summary:    encryptedSummary,
+	// 	}
+	// 	if err := db.Clauses(clause.OnConflict{
+	// 		Columns:   []clause.Column{{Name: "user_id"}, {Name: "week_number"}, {Name: "year"}}, // Conflict target (unique constraint)
+	// 		DoUpdates: clause.AssignmentColumns([]string{"summary"}),                             // Update the "summary" column on conflict
+	// 	}).Create(&newSummary).Error; err != nil {
+	// 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+	// 			"error": "Error saving summary",
+	// 		})
+	// 	}
+	// }
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "Summaries generated and saved successfully",
+		"message": "Summary Request Queued.",
 	})
 }
 

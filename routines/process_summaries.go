@@ -24,6 +24,11 @@ func ProcessSummaries() {
 	db := initialisers.DB
 	redisClient := initialisers.RedisClient
 
+	if redisClient == nil {
+		log.Println("Redis client not initialised")
+		return
+	}
+
 	//Config for the worker.
 	// maxConcurrent := 5 // Maximum number of concurrent batches process
 	batchSize := 10 // Number of users to process in one API call

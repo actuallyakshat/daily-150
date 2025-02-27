@@ -316,6 +316,13 @@ func GetAllEntries(c *fiber.Ctx) error {
 func GenerateWeeklySummary(c *fiber.Ctx) error {
 	db := initialisers.DB
 	redisClient := initialisers.RedisClient
+
+	if redisClient == nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Redis client not initialised",
+		})
+	}
+
 	now := time.Now().UTC()
 
 	// Calculate the start and end of the previous week because cron job will run every monday

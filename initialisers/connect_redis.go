@@ -1,6 +1,8 @@
 package initialisers
 
 import (
+	"context"
+	"fmt"
 	"os"
 
 	"github.com/redis/go-redis/v9"
@@ -19,4 +21,11 @@ func InitRedis() {
 		Password: os.Getenv("REDIS_PASSWORD"),
 		DB:       0,
 	})
+
+	ctx := context.Background()
+	if err := RedisClient.Ping(ctx).Err(); err != nil {
+		fmt.Printf("Failed to connect to Redis: %v\n", err)
+	} else {
+		fmt.Println("Successfully connected to Redis")
+	}
 }

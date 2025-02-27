@@ -2,7 +2,7 @@ package initialisers
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/redis/go-redis/v9"
@@ -18,7 +18,7 @@ func InitRedis() {
 
 	opt, err := redis.ParseURL(redisURL)
 	if err != nil {
-		fmt.Printf("Failed to parse Redis URL: %v\n", err)
+		log.Printf("Failed to parse Redis URL: %v\n", err)
 		return
 	}
 
@@ -30,8 +30,8 @@ func InitRedis() {
 
 	ctx := context.Background()
 	if err := RedisClient.Ping(ctx).Err(); err != nil {
-		fmt.Printf("Failed to connect to Redis: %v\n", err)
+		log.Printf("Failed to connect to Redis: %v\n", err)
 	} else {
-		fmt.Println("Successfully connected to Redis")
+		log.Println("Successfully connected to Redis")
 	}
 }

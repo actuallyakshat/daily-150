@@ -16,11 +16,17 @@ func InitRedis() {
 		redisURL = "localhost:6379"
 	}
 
-	RedisClient = redis.NewClient(&redis.Options{
-		Addr:     redisURL,
-		Password: os.Getenv("REDIS_PASSWORD"),
-		DB:       0,
-	})
+	opt, err := redis.ParseURL(redisURL)
+	if err != nil {
+		fmt.Printf("Failed to parse Redis URL: %v\n", err)
+		return
+	}
+
+	if password := os.Getenv("REDIS_PASSWORD"); password != "" {
+		opt.Password = password
+	}
+
+	RedisClient = redis.NewClient(opt)
 
 	ctx := context.Background()
 	if err := RedisClient.Ping(ctx).Err(); err != nil {

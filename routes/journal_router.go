@@ -15,4 +15,5 @@ func JournalRouter(api fiber.Router) {
 	api.Get("/generate-summary", controllers.GenerateWeeklySummary)
 	api.Get("/summaries", controllers.GetSummariesForUser)
 	api.Get("/summary/:id", controllers.GetSummaryByID)
+	api.Get("/extension/did-user-journal-today", controllers.DidUserJournalToday)
 }

@@ -538,3 +538,36 @@ func GetSummaryByID(c *fiber.Ctx) error {
 		"summary": response,
 	})
 }
+
+func DidUserJournalToday(c *fiber.Ctx) error {
+	db := initialisers.DB
+	username, ok := helper.GetUsername(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "You are not authorized to view this entry",
+		})
+	}
+
+	var user models.User
+	if err := db.Where("username = ?", username).First(&user).Error; err != nil {
+		return helper.HandleError(c, err)
+	}
+
+	var entries []models.JournalEntry
+
+	if err := db.Where("user_id = ? AND DATE(date) = CURRENT_DATE", user.ID).Find(&entries).Error; err != nil {
+		return helper.HandleError(c, err)
+	}
+
+	if len(entries) > 0 {
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"status":  true,
+			"message": "You have journaled today",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  false,
+		"message": "You have not journaled today",
+	})
+}

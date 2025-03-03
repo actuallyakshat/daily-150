@@ -1,12 +1,11 @@
+import { AxiosError } from "axios";
 import { atom, useAtom } from "jotai";
 import { useCallback } from "react";
 import { useNavigate } from "react-router";
-import api, { removeAuthToken, setAuthToken } from "../lib/axios";
-import { AxiosError } from "axios";
+import api from "../lib/axios";
 import { User } from "../types/types";
 
 interface loginResponse {
-  jwt?: string;
   message?: string;
   error?: string;
 }
@@ -32,11 +31,11 @@ export const useAuth = () => {
 
       const data: loginResponse = response.data;
 
-      if (!data.jwt) {
-        throw new Error("No JWT token found in response");
-      }
+      // if (!data.jwt) {
+      //   throw new Error("No JWT token found in response");
+      // }
 
-      setAuthToken(data.jwt);
+      // setAuthToken(data.jwt);
       await refreshUser();
       return data;
     } catch (error) {
@@ -47,10 +46,9 @@ export const useAuth = () => {
 
   const register = async (username: string, password: string) => {
     try {
-      const response = await api.post("/api/register", { username, password });
-      const data = response.data;
-
-      setAuthToken(data.jwt);
+      await api.post("/api/register", { username, password });
+      // const data = response.data;
+      // setAuthToken(data.jwt);
       await refreshUser();
     } catch (error) {
       const e = error as AxiosError<ErrorResponse>;
@@ -62,10 +60,15 @@ export const useAuth = () => {
     }
   };
 
-  const logout = () => {
-    removeAuthToken();
-    setUser(null);
-    navigate("/login");
+  const logout = async () => {
+    try {
+      await api.get("/api/logout");
+      setUser(null);
+      navigate("/login");
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   };
 
   interface refreshUserResponse {
@@ -77,12 +80,6 @@ export const useAuth = () => {
   const refreshUser = useCallback(async () => {
     try {
       setIsLoading(true);
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setUser(null);
-        return;
-      }
-
       const response = await api.get("/api/me");
       const data: refreshUserResponse = response.data;
 
@@ -91,7 +88,6 @@ export const useAuth = () => {
       setUser(data.user);
     } catch (error) {
       console.error(error);
-      removeAuthToken();
       setUser(null);
     } finally {
       setIsLoading(false);

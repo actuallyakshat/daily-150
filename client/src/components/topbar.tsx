@@ -3,13 +3,15 @@ import api from "../lib/axios";
 import { useAuth } from "../store/auth";
 import { JournalEntry } from "../types/types";
 import { useCallback, useEffect, useState } from "react";
+import { formatISO } from "date-fns";
 
 interface TopBarProps {
   selectedEntry: JournalEntry | null;
   allowSave: boolean;
   content: string;
   allowNewEntry: boolean;
-  setAllowSave: React.Dispatch<React.SetStateAction<boolean>>; // Add this to your interface
+  setAllowNewEntry: React.Dispatch<React.SetStateAction<boolean>>;
+  setAllowSave: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedEntry: React.Dispatch<React.SetStateAction<JournalEntry | null>>;
 }
 
@@ -18,6 +20,7 @@ export default function TopBar({
   allowSave,
   content,
   allowNewEntry,
+  setAllowNewEntry,
   setAllowSave,
   setSelectedEntry,
 }: TopBarProps) {
@@ -30,6 +33,30 @@ export default function TopBar({
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
+  useEffect(() => {
+    if (user) {
+      if (user?.journal_entries?.length > 0) {
+        const todaysCompleteDate = formatISO(new Date(), {
+          representation: "complete",
+        });
+
+        const alreadyExists = user.journal_entries.some(
+          (entry) =>
+            entry.date.split("T")[0] === todaysCompleteDate.split("T")[0]
+        );
+
+        if (alreadyExists) {
+          setAllowNewEntry(false);
+          return;
+        } else {
+          setAllowNewEntry(true);
+        }
+      } else {
+        setAllowNewEntry(true);
+      }
+    }
+  }, [user, setAllowNewEntry]);
+
   const onSave = useCallback(async () => {
     try {
       if (!selectedEntry) return;
@@ -39,8 +66,9 @@ export default function TopBar({
           content,
           date: selectedEntry.date,
         });
-        console.log(response);
+
         refreshUser();
+
         setSelectedEntry(response.data.entry);
         return;
       }

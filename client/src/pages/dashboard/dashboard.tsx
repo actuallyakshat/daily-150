@@ -2,39 +2,13 @@ import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "../../store/auth";
 import { JournalEntry } from "../../types/types";
-import { formatISO } from "date-fns";
 export default function Dashboard({
   setSelectedEntry,
-  setAllowNewEntry,
 }: {
   setSelectedEntry: React.Dispatch<React.SetStateAction<JournalEntry | null>>;
-  setAllowNewEntry: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
-  useEffect(() => {
-    if (user) {
-      if (user?.journal_entries?.length > 0) {
-        const todaysCompleteDate = formatISO(new Date(), {
-          representation: "complete",
-        });
-
-        const alreadyExists = user.journal_entries.some(
-          (entry) =>
-            entry.date.split("T")[0] === todaysCompleteDate.split("T")[0]
-        );
-
-        if (alreadyExists) {
-          setAllowNewEntry(false);
-          return;
-        } else {
-          setAllowNewEntry(true);
-        }
-      } else {
-        setAllowNewEntry(true);
-      }
-    }
-  }, [user, setAllowNewEntry]);
 
   useEffect(() => {
     setSelectedEntry(null);

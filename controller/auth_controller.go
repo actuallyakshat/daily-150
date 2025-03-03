@@ -158,19 +158,67 @@ func Login(c *fiber.Ctx) error {
 		})
 	}
 
-	//sign jwt
 	token, err := generateJWT(user.Username)
 	if err != nil {
-		log.Println("Something went wrong while generating JWT token")
+		log.Println("Error generating JWT:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Something went wrong",
 		})
 	}
 
+	var isSecure bool
+	if os.Getenv("ENV") == "development" {
+		isSecure = false
+	} else {
+		isSecure = true
+	}
+
+	cookie := fiber.Cookie{
+		Name:     "token",
+		Value:    token,
+		Expires:  time.Now().Add(24 * 30 * time.Hour),
+		HTTPOnly: true,     // this will prevent client-side JS access
+		Secure:   isSecure, // will set to true in production to only allow HTTPS
+		SameSite: "Lax",    // this will prvide cross site request forgery protection
+		Path:     "/",      // will be accessible across all paths
+	}
+
+	c.Cookie(&cookie)
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "	Login successful",
-		"jwt":     token,
+		"message": "Login successful",
 	})
+}
+
+func Logout(c *fiber.Ctx) error {
+
+	var isSecure bool
+	if os.Getenv("ENV") == "development" {
+		isSecure = false
+	} else {
+		isSecure = true
+	}
+
+	var domain string
+	if os.Getenv("ENV") == "development" {
+		domain = "http://localhost:3000"
+	} else {
+		domain = "https://daily150.actuallyakshat.in"
+	}
+
+	c.ClearCookie("token", "/", domain)
+
+	c.Cookie(&fiber.Cookie{
+		Name:     "token",
+		Value:    "",
+		Expires:  time.Now().Add(-1 * time.Hour), // Set expiration in the past
+		HTTPOnly: true,
+		Secure:   isSecure,
+		SameSite: "Lax",
+		Path:     "/",
+	})
+
+	return c.JSON(fiber.Map{"message": "Successfully logged out"})
 }
 
 // Me handler

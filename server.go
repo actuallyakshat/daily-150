@@ -6,11 +6,13 @@ import (
 	"daily-150/migrate"
 	"daily-150/routes"
 	"daily-150/routines"
+	"log"
 	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/encryptcookie"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
@@ -42,6 +44,15 @@ func setupMiddlewares(app *fiber.App) {
 		AllowCredentials: true,
 		MaxAge:           3600,
 		ExposeHeaders:    "Set-Cookie",
+	}))
+
+	cookieEncryptionKey := os.Getenv("COOKIE_ENCRYPTION_KEY")
+	if cookieEncryptionKey == "" {
+		log.Fatalln("COOKIE_ENCRYPTION_KEY is not set")
+	}
+
+	app.Use(encryptcookie.New(encryptcookie.Config{
+		Key: cookieEncryptionKey,
 	}))
 
 	app.Use(limiter.New(limiter.Config{

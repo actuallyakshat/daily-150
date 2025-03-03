@@ -11,22 +11,31 @@ import (
 var RedisClient *redis.Client
 
 func InitRedis() {
-	redisURL := os.Getenv("REDIS_URL")
-	if redisURL == "" {
-		redisURL = "localhost:6379"
-	}
+	currentEnv := os.Getenv("ENV")
 
-	opt, err := redis.ParseURL(redisURL)
-	if err != nil {
-		log.Printf("Failed to parse Redis URL: %v\n", err)
-		return
-	}
+	if currentEnv != "development" {
+		redisURL := os.Getenv("REDIS_URL")
+		if redisURL == "" {
+			redisURL = "localhost:6379"
+		}
 
-	if password := os.Getenv("REDIS_PASSWORD"); password != "" {
-		opt.Password = password
-	}
+		opt, err := redis.ParseURL(redisURL)
+		if err != nil {
+			log.Printf("Failed to parse Redis URL: %v\n", err)
+			return
+		}
 
-	RedisClient = redis.NewClient(opt)
+		if password := os.Getenv("REDIS_PASSWORD"); password != "" {
+			opt.Password = password
+		}
+
+		RedisClient = redis.NewClient(opt)
+	} else {
+		RedisClient = redis.NewClient(&redis.Options{
+			Addr:     "localhost:6379",
+			Password: "",
+		})
+	}
 
 	ctx := context.Background()
 	if err := RedisClient.Ping(ctx).Err(); err != nil {

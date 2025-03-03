@@ -23,8 +23,6 @@ export default function SummaryPage() {
   if (error) return <div>Error: {error}</div>;
   if (!data) return <div>No data</div>;
 
-  console.log(data.summary.week_number);
-
   return (
     <div className="flex-1 p-5">
       <h1 className="font-bold text-xl">

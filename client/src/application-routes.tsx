@@ -35,6 +35,7 @@ export default function ApplicationRoutes() {
             allowSave={allowSave}
             content={content}
             allowNewEntry={allowNewEntry}
+            setAllowNewEntry={setAllowNewEntry}
             setAllowSave={setAllowSave}
             setSelectedEntry={setSelectedEntry}
           />
@@ -44,12 +45,7 @@ export default function ApplicationRoutes() {
             <Route path="/register" element={<Register />} />
             <Route
               path="/dashboard"
-              element={
-                <Dashboard
-                  setSelectedEntry={setSelectedEntry}
-                  setAllowNewEntry={setAllowNewEntry}
-                />
-              }
+              element={<Dashboard setSelectedEntry={setSelectedEntry} />}
             />
 
             <Route

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -27,18 +26,10 @@ func CheckAuth() fiber.Handler {
 			return c.Next()
 		}
 
-		authHeader := c.Get("Authorization")
-		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Missing or invalid authorization header",
-			})
-		}
-
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-
+		tokenString := c.Cookies("token")
 		if tokenString == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Invalid token",
+				"error": "Missing or invalid token cookie",
 			})
 		}
 

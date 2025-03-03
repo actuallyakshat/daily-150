@@ -29,6 +29,7 @@ func main() {
 	go routines.ProcessSummaries()
 
 	app := fiber.New()
+
 	setupMiddlewares(app)
 	setupRoutes(app)
 	setupStaticFiles(app)
@@ -38,7 +39,7 @@ func main() {
 
 func setupMiddlewares(app *fiber.App) {
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:3000,http://localhost:5173,http://localhost:8080",
+		AllowOrigins:     "http://localhost:3000,http://localhost:5173,http://localhost:8080, chrome-extension://jlmohemkiclhpibllpcbggcdopblnodn",
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, Upgrade, Connection, Sec-WebSocket-Key, Sec-WebSocket-Version, Sec-WebSocket-Extensions, Sec-WebSocket-Protocol",
 		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
 		AllowCredentials: true,
@@ -70,8 +71,8 @@ func setupMiddlewares(app *fiber.App) {
 }
 
 func setupRoutes(app *fiber.App) {
-	api := app.Group("/api")
 	app.Use(logger.New())
+	api := app.Group("/api")
 	api.Use(middlewares.CheckAuth())
 
 	api.Use(limiter.New(limiter.Config{

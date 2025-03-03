@@ -17,6 +17,7 @@ import (
 func CreateEntry(c *fiber.Ctx) error {
 	db := initialisers.DB
 	username, ok := helper.GetUsername(c)
+	redis := initialisers.RedisClient
 
 	if !ok {
 		return helper.HandleError(c, fiber.ErrUnauthorized)
@@ -95,6 +96,17 @@ func CreateEntry(c *fiber.Ctx) error {
 		CreatedAt: newEntry.CreatedAt.Format("2006-01-02 15:04:05"),
 	}
 
+	ctx := context.Background()
+	currentDate := time.Now().UTC().Format("2006-01-02")
+	redisKey := fmt.Sprintf("daily-150:journal-today:%s:%d", currentDate, newEntry.UserID)
+
+	_, err = redis.Set(ctx, redisKey, "true", 24*time.Hour).Result()
+	if err != nil {
+		log.Println("Error saving to cache:", err)
+	}
+
+	log.Println("Saved in cache")
+
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"message": "Entry created successfully",
 		"entry":   response,
@@ -137,6 +149,18 @@ func DeleteEntry(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Error deleting entry",
+		})
+	}
+
+	ctx := context.Background()
+	redis := initialisers.RedisClient
+	currentDate := time.Now().UTC().Format("2006-01-02")
+	redisKey := fmt.Sprintf("daily-150:journal-today:%s:%d", currentDate, entry.UserID)
+	_, err = redis.Set(ctx, redisKey, "false", 24*time.Hour).Result()
+	if err != nil {
+		log.Println("Error deleting from cache:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Error deleting from cache",
 		})
 	}
 
@@ -536,38 +560,5 @@ func GetSummaryByID(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"summary": response,
-	})
-}
-
-func DidUserJournalToday(c *fiber.Ctx) error {
-	db := initialisers.DB
-	username, ok := helper.GetUsername(c)
-	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "You are not authorized to view this entry",
-		})
-	}
-
-	var user models.User
-	if err := db.Where("username = ?", username).First(&user).Error; err != nil {
-		return helper.HandleError(c, err)
-	}
-
-	var entries []models.JournalEntry
-
-	if err := db.Where("user_id = ? AND DATE(date) = CURRENT_DATE", user.ID).Find(&entries).Error; err != nil {
-		return helper.HandleError(c, err)
-	}
-
-	if len(entries) > 0 {
-		return c.Status(fiber.StatusOK).JSON(fiber.Map{
-			"status":  true,
-			"message": "You have journaled today",
-		})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"status":  false,
-		"message": "You have not journaled today",
 	})
 }

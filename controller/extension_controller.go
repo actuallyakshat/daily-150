@@ -74,11 +74,16 @@ func DidUserJournalToday(c *fiber.Ctx) error {
 	currentDate := time.Now().UTC().Format("2006-01-02")
 	redisKey := fmt.Sprintf("daily-150:journal-today:%s:%d", currentDate, user.ID)
 	if result, err := redis.Get(ctx, redisKey).Result(); err == nil {
+		log.Println("Serving from cache")
 		if result == "true" {
-			log.Println("Serving from cache")
 			return c.Status(fiber.StatusOK).JSON(fiber.Map{
 				"status":  true,
 				"message": "You have journaled today",
+			})
+		} else {
+			return c.Status(fiber.StatusOK).JSON(fiber.Map{
+				"status":  false,
+				"message": "You have not journaled today",
 			})
 		}
 	}

@@ -349,8 +349,12 @@ func GenerateWeeklySummary(c *fiber.Ctx) error {
 
 	now := time.Now().UTC()
 
-	// Calculate the start and end of the previous week because cron job will run every monday
-	startOfWeek := now.AddDate(0, 0, -int(now.Weekday())-7)
+	mostRecentMonday := now.AddDate(0, 0, -int(now.Weekday())+1)
+	if now.Weekday() == time.Sunday {
+		mostRecentMonday = now.AddDate(0, 0, -6)
+	}
+
+	startOfWeek := mostRecentMonday.AddDate(0, 0, -7)
 	endOfWeek := startOfWeek.AddDate(0, 0, 7)
 
 	CRON_ACTIVATION_KEY := os.Getenv("CRON_ACTIVATION_KEY")
